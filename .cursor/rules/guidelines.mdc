@@ -1,0 +1,166 @@
+---
+alwaysApply: true
+---
+
+# Cursor Rules — React / Frontend Guidelines
+
+**Primary reference (must be first):**  
+https://react.dev/reference/rules
+
+---
+
+## Purpose
+A single source-of-truth *cursor rule file* for conventions and engineering guardrails to follow across the project. These rules are actionable and prescriptive — follow them by default and only change when explicitly instructed.
+
+---
+
+## 1. Rules of React
+- **Components and Hooks must be pure:**
+  - Components must be idempotent — React components are assumed to always return the same output with respect to their inputs (props, state, and context).
+  - Side effects must run outside of render — Side effects should not run in render, as React can render components multiple times to create the best possible user experience.
+  - Props and state are immutable — A component's props and state are immutable snapshots with respect to a single render. Never mutate them directly.
+  - Return values and arguments to Hooks are immutable — Once values are passed to a Hook, you should not modify them. Like props in JSX, values become immutable when passed to a Hook.
+  - Values are immutable after being passed to JSX — Don't mutate values after they've been used in JSX. Move the mutation before the JSX is created.
+
+- **React calls Components and Hooks:**
+  - Never call component functions directly — Components should only be used in JSX. Don't call them as regular functions.
+  - Never pass around hooks as regular values — Hooks should only be called inside of components. Never pass it around as a regular value.
+
+- **Rules of Hooks:**
+  - Only call Hooks at the top level — Don't call Hooks inside loops, conditions, or nested functions. Instead, always use Hooks at the top level of your React function, before any early returns.
+  - Only call Hooks from React functions — Don't call Hooks from regular JavaScript functions.
+
+- **Tooling:**
+  - Use Strict Mode to help catch violations of these rules.
+  - Use React's ESLint plugin (`eslint-plugin-react-hooks`) to help your codebase follow the Rules of React.
+
+**Reference:** https://react.dev/reference/rules
+
+---
+
+## 2. Do **not** change existing logic
+- **Do not modify any existing logic or authentication logic** unless you are explicitly told to by the owner.  
+- Treat all flows, tokens, redirect behavior, and related config as protected.
+
+---
+
+## 3. Component reuse & common components
+- Prefer the existing common/shared components. **Do not create a new component** if an appropriate one already exists.
+- Common components should live under a single directory, e.g. `src/components/common` or `src/components/ui`.
+- When adding new UI pieces, check `common` first and extend or compose existing components rather than duplicating.
+
+---
+
+## 4. Code splitting and lazy loading
+- Use code-splitting for large pages and rarely-used routes with `React.lazy()` + `<Suspense>` or dynamic imports.
+- For route-level splitting prefer lazy loading components at the route boundary.
+- Small presentational subcomponents reused across pages should remain in the common bundle.
+- If a component is large or includes heavy libraries (charts, maps), load it lazily.
+
+---
+
+## 5. Avoid unnecessary re-renders
+- Use `React.memo` for pure/dumb components that receive props and re-render often.
+- Wrap stable callback props with `useCallback`.
+- Memoize expensive derived values with `useMemo`.
+- Avoid creating inline objects/arrays inside render unless memoized.
+
+---
+
+## 6. API call optimization
+- Ensure **no duplicate or repeated API calls**:
+  - Check `useEffect` dependency arrays.
+  - Use request deduplication / caching via [TanStack Query](https://tanstack.com/query/latest).
+  - Abort stale fetches using `AbortController` (or rely on Query's built-in cancellation).
+  - Debounce input-driven requests (search/autocomplete).
+- Use **TanStack Query** (`@tanstack/react-query`) for server-state caching, revalidation, and mutations — not SWR.
+- Configure a shared `QueryClient` in `src/query/queryClient.js` and wrap the app with `QueryClientProvider`.
+- Define stable, hierarchical **query keys** (e.g. `src/components/{feature}/queryKeys.js`) for cache invalidation and deduplication.
+- Use a single API helper (e.g. `src/api/*`) for interceptors, retries, and errors.
+
+---
+
+## 7. Component performance patterns
+- Prefer functional components with hooks.
+- For long lists, use virtualization (`react-window`).
+- Keep components small and single-purpose.
+- Move heavy logic into hooks or utils.
+
+---
+
+## 8. Icons & images
+- Prefer Material-UI icons if available.
+- If an exact icon is missing, convert the SVG into a **React component** and store it under `src/components/icons/`.
+- Use inline SVGs instead of raster images where possible.
+
+---
+
+## 9. `useCallback`, `useMemo`, `memo`
+- Only use theme where need of not needed do not use them 
+- Use `useCallback` for stable callback props.
+- Use `useMemo` for expensive computed values.
+- Wrap presentational components with `memo` if they re-render frequently.
+
+---
+
+## 10. Local file / same-file splitting
+- Define small helper subcomponents in the *same file* below the parent component.
+- Move it out only if reused elsewhere or grows large.
+- Memoize same-file subcomponents if beneficial.
+
+---
+
+## 11. API calls in hooks
+- Encapsulate data fetching inside custom hooks (e.g. `useUserManagement`) using `useQuery` / `useMutation` from TanStack Query.
+- Prefer Query's built-in states: `{ data, error, isPending, isFetching, isError, refetch }` — avoid duplicating loading/error state in `useState`.
+- Use `useQueryClient` + `invalidateQueries` after mutations; use `keepPreviousData` for paginated lists.
+- Keep non-fetch side effects inside `useEffect` only — do not fetch in render.
+
+---
+
+## 12. Error handling & loading states
+- Show proper loading and error UI for every API call.
+- Use skeleton loaders to avoid layout shift.
+
+---
+
+## 13. Accessibility & semantics
+- Use semantic HTML (`button`, `nav`, `main`, etc.).
+- Provide meaningful `aria-*` and `alt` attributes.
+
+---
+
+## 14. Naming & file structure
+- Components → `src/components/{area}/{ComponentName}.jsx`
+- Icons → `src/components/icons/{IconName}.jsx`
+- Hooks → `src/hooks/useSomething.js` (or feature-scoped hooks under `src/components/{area}/`)
+- Query keys → `src/components/{area}/queryKeys.js`
+- Query client → `src/query/queryClient.js`
+- API helpers → `src/api/*`
+- Styles → co-located CSS modules `{ComponentName}.module.css`
+
+---
+
+## 15. Testing & linting
+- Add unit tests for important hooks and pure functions.
+- Use ESLint + Prettier; enforce via CI or pre-commit hooks.
+
+---
+
+## 16. Performance checklist (before merge)
+- No duplicate API calls.
+- Heavy components are lazy-loaded.
+- Memoization applied where needed.
+- Images/icons optimized as React SVG components.
+
+---
+
+## 17. PR checklist for reviewers
+- Logic/auth code unchanged unless approved.
+- Shared components reused; no unnecessary new ones.
+- API calls use TanStack Query with stable query keys; no duplicate fetches.
+- Memoization used properly.
+- MUI icons or SVG components used.
+- Code splitting applied where relevant.
+
+---

@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "sonarqube": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--init",
+        "--pull=always",
+        "-i",
+        "--rm",
+        "--network",
+        "host",
+        "-e",
+        "SONARQUBE_TOKEN",
+        "-e",
+        "SONARQUBE_URL",
+        "mcp/sonarqube"
+      ],
+      "env": {
+        "SONARQUBE_TOKEN": "squ_1b1a50bd7ed982c6f2cca72f99052acd48a5341e",
+        "SONARQUBE_URL": "http://localhost:9000"
+      }
+    }
+  }
+}
