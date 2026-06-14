@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: multi-user-frontend-config
+  namespace: multi-user
+data:
+  VITE_KEYCLOAK_URL: "https://keycloak.showroom.lumegalabs.com"
+  VITE_KEYCLOAK_REALM: "converse"
+  VITE_KEYCLOAK_CLIENT: "converse-client"
+  VITE_MULTI_USER_API_URL: "https://converse.showroom.lumegalabs.com/multi-user-api"
+  VITE_PlAN_BASE_URL: "https://converse.showroom.lumegalabs.com/ladder-api/v1"

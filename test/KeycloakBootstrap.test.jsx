@@ -47,16 +47,65 @@ describe('KeycloakBootstrap', () => {
     });
   });
 
-  it('uses VITE_DEV_ACCESS_TOKEN and skips Keycloak login redirect', async () => {
+  it('uses VITE_DEV_ACCESS_TOKEN on localhost only', async () => {
     const { runtimeEnv } = require('../src/config/runtimeEnv');
     runtimeEnv.mockImplementation((name) => {
       if (name === 'VITE_DEV_ACCESS_TOKEN') return 'dev-token';
       return '';
     });
 
+    Object.defineProperty(globalThis, 'location', {
+      value: { hostname: 'localhost' },
+      writable: true,
+    });
+
     render(<KeycloakBootstrap />);
 
     await waitFor(() => {
+      expect(screen.getByTestId('multi-user-root')).toHaveTextContent('with-keycloak');
+    });
+  });
+
+  it('uses ?token= from URL when embedded in Converse iframe', async () => {
+    Object.defineProperty(globalThis, 'location', {
+      value: {
+        hostname: 'multi-user.showroom.lumegalabs.com',
+        href: 'https://multi-user.showroom.lumegalabs.com/?token=iframe-token',
+        search: '?token=iframe-token',
+        pathname: '/',
+      },
+      writable: true,
+    });
+    globalThis.history.replaceState = jest.fn();
+
+    render(<KeycloakBootstrap />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('multi-user-root')).toHaveTextContent('with-keycloak');
+    });
+    expect(globalThis.history.replaceState).toHaveBeenCalled();
+  });
+
+  it('does not use VITE_DEV_ACCESS_TOKEN on production host', async () => {
+    const Keycloak = require('keycloak-js');
+    const { runtimeEnv } = require('../src/config/runtimeEnv');
+    runtimeEnv.mockImplementation((name) => {
+      if (name === 'VITE_DEV_ACCESS_TOKEN') return 'dev-token';
+      if (name === 'VITE_KEYCLOAK_URL') return 'https://keycloak.example.com';
+      if (name === 'VITE_KEYCLOAK_REALM') return 'converse';
+      if (name === 'VITE_KEYCLOAK_CLIENT') return 'converse-client';
+      return '';
+    });
+
+    Object.defineProperty(globalThis, 'location', {
+      value: { hostname: 'multi-user.showroom.lumegalabs.com' },
+      writable: true,
+    });
+
+    render(<KeycloakBootstrap />);
+
+    await waitFor(() => {
+      expect(Keycloak).toHaveBeenCalled();
       expect(screen.getByTestId('multi-user-root')).toHaveTextContent('with-keycloak');
     });
   });

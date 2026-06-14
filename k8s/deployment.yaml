@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: multi-user-frontend
+  namespace: multi-user
+  labels:
+    app: multi-user-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: multi-user-frontend
+  template:
+    metadata:
+      labels:
+        app: multi-user-frontend
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: multi-user-frontend
+          image: ghcr.io/nishantshaklan/multi-user-frontend:v20260614-234115
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          env:
+            - name: VITE_KEYCLOAK_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: multi-user-frontend-config
+                  key: VITE_KEYCLOAK_URL
+            - name: VITE_KEYCLOAK_REALM
+              valueFrom:
+                configMapKeyRef:
+                  name: multi-user-frontend-config
+                  key: VITE_KEYCLOAK_REALM
+            - name: VITE_KEYCLOAK_CLIENT
+              valueFrom:
+                configMapKeyRef:
+                  name: multi-user-frontend-config
+                  key: VITE_KEYCLOAK_CLIENT
+            - name: VITE_MULTI_USER_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: multi-user-frontend-config
+                  key: VITE_MULTI_USER_API_URL
+            - name: VITE_PlAN_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: multi-user-frontend-config
+                  key: VITE_PlAN_BASE_URL
+          resources:
+            requests:
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3

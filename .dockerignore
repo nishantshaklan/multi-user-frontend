@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+.scannerwork
+.env
+.env.local
+.git
+.cursor
+cdp-frontend
+*.log
+.DS_Store

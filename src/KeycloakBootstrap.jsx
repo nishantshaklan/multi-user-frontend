@@ -4,9 +4,11 @@ import { Box, CircularProgress } from '@mui/material';
 import { runtimeEnv } from './config/runtimeEnv';
 import MultiUserRoot from './MultiUserRoot';
 
-const KEYCLOAK_URL = runtimeEnv('VITE_KEYCLOAK_URL') || '';
-const KEYCLOAK_REALM = runtimeEnv('VITE_KEYCLOAK_REALM') || 'converse';
-const KEYCLOAK_CLIENT_ID = runtimeEnv('VITE_KEYCLOAK_CLIENT') || 'converse-client';
+function isLocalDevHost() {
+  if (typeof globalThis.location === 'undefined') return false;
+  const host = globalThis.location.hostname;
+  return host === 'localhost' || host === '127.0.0.1';
+}
 
 function createDevKeycloakStub(token) {
   return {
@@ -31,10 +33,25 @@ function LoadingScreen() {
   );
 }
 
+function getTokenFromUrl() {
+  if (typeof globalThis.location === 'undefined') return '';
+  return new URLSearchParams(globalThis.location.search).get('token') || '';
+}
+
+function stripTokenFromUrl() {
+  if (typeof globalThis.history === 'undefined' || typeof globalThis.location === 'undefined') return;
+  const url = new URL(globalThis.location.href);
+  if (!url.searchParams.has('token')) return;
+  url.searchParams.delete('token');
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  globalThis.history.replaceState({}, '', next);
+}
+
 /**
  * When the host provides window.keycloak (embedded remote), reuse it.
- * For local dev, set VITE_DEV_ACCESS_TOKEN to skip Keycloak login redirect.
- * Otherwise init Keycloak locally with login-required (redirect URI must be allowlisted).
+ * When Converse embeds this app in an iframe it passes ?token= on the URL.
+ * On localhost only, VITE_DEV_ACCESS_TOKEN can skip Keycloak for local dev.
+ * Otherwise init Keycloak with login-required (same as cdp-frontend).
  */
 export default function KeycloakBootstrap() {
   const [keycloak, setKeycloak] = useState(() => globalThis.keycloak || null);
@@ -47,22 +64,36 @@ export default function KeycloakBootstrap() {
       return;
     }
 
-    const devAccessToken = runtimeEnv('VITE_DEV_ACCESS_TOKEN');
-    if (devAccessToken) {
-      setKeycloak(createDevKeycloakStub(devAccessToken));
+    const iframeToken = getTokenFromUrl();
+    if (iframeToken) {
+      stripTokenFromUrl();
+      setKeycloak(createDevKeycloakStub(iframeToken));
       setReady(true);
       return;
     }
 
-    if (!KEYCLOAK_URL) {
+    const keycloakUrl = (runtimeEnv('VITE_KEYCLOAK_URL') || '').replace(/\/$/, '');
+    const keycloakRealm = runtimeEnv('VITE_KEYCLOAK_REALM') || 'converse';
+    const keycloakClientId = runtimeEnv('VITE_KEYCLOAK_CLIENT') || 'converse-client';
+
+    if (isLocalDevHost()) {
+      const devAccessToken = runtimeEnv('VITE_DEV_ACCESS_TOKEN');
+      if (devAccessToken) {
+        setKeycloak(createDevKeycloakStub(devAccessToken));
+        setReady(true);
+        return;
+      }
+    }
+
+    if (!keycloakUrl) {
       setReady(true);
       return;
     }
 
     const kc = new Keycloak({
-      url: KEYCLOAK_URL,
-      realm: KEYCLOAK_REALM,
-      clientId: KEYCLOAK_CLIENT_ID,
+      url: keycloakUrl,
+      realm: keycloakRealm,
+      clientId: keycloakClientId,
     });
 
     kc
